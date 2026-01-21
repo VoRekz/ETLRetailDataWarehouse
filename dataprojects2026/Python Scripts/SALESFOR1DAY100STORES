@@ -1,0 +1,58 @@
+import pandas as pd
+import numpy as np
+import os
+
+DATEID = '20260119'
+directory = r"C:\Users\julio\OneDrive\Documents\dataprojects2026\Excel\CSV Files\Dailysalesdata"
+
+# Ensure the directory exists
+if not os.path.exists(directory):
+    os.makedirs(directory)
+
+# Loop to generate 100 stores
+for i in range(1, 101):
+    num_rows = np.random.randint(100, 1000)
+    data = {
+        'DateID': [DATEID] * num_rows,
+        'ProductID': np.random.randint(1, 1001, size=num_rows),
+        'StoreID': [i] * num_rows,
+        'CustomerID': np.random.randint(1, 1001, size=num_rows),
+        'QuantityOrderded': np.random.randint(1, 21, size=num_rows),   
+        'OrderAmount': np.random.randint(100, 1001, size=num_rows)
+    }
+    
+    df = pd.DataFrame(data)
+
+    # Calculate Discount and Shipping
+    discount_perc = np.random.uniform(0.02, 0.15, size=num_rows)
+    shipping_cost = np.random.uniform(0.05, 0.15, size=num_rows)
+
+    df['DiscountAmount'] = df['OrderAmount'] * discount_perc
+    df['Shipping Cost'] = df['OrderAmount'] * shipping_cost
+    df['TotalAmount'] = df['OrderAmount'] - (df['DiscountAmount'] + df['Shipping Cost'])
+
+    # Fix the filename to use the store number 'i' and DATEID
+    file_name = f'Store_{i}_{DATEID}.csv'
+    file_path = os.path.join(directory, file_name)
+
+    # Save the file to the specific directory
+    df.to_csv(file_path, index=False)
+    
+    # Optional: print progress every 10 stores
+    if i % 10 == 0:
+        print(f"Generated reports for {i} stores...")
+
+print(f"Successfully generated 100 files in: {directory}")
+
+
+""" These are the column we need to generate 
+'DateID' -- random date in a date range in a specified format 
+'ProductID' -- random 
+'StoreID' -- random 
+'CustomerID' -- random 
+'QuantityOrderded' -- random 
+'OrderAmount' -- random 
+'DiscountAmount' -- Calculated dependent on OrderAmount
+'Shipping Cost' -- Calculated dependent on OrderAmount
+'TotalAmount' -- Calculated dependent on OrderAmount and others  
+"""

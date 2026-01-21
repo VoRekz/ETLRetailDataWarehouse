@@ -1,0 +1,200 @@
+-- create database test_db ;
+
+-- CREATE schema test_db_Schema ; 
+
+
+
+-- Dimension Table: DimDate
+CREATE TABLE DimDate (
+    DateID INT PRIMARY KEY,
+    Date DATE,
+    DayOfWeek VARCHAR(10),
+    Month VARCHAR(10),
+    Quarter INT,
+    Year INT,
+    IsWeekend BOOLEAN
+);
+
+-- Dimension Table: DimCustomer
+CREATE TABLE DimCustomer (
+    CustomerID INT PRIMARY KEY autoincrement start 1 increment 1,
+    FirstName VARCHAR(50),
+    LastName VARCHAR(50),
+    Gender VARCHAR(10),
+    DateOfBirth DATE,
+    Email VARCHAR(100),
+    Address VARCHAR(255),
+    City VARCHAR(50),
+    State VARCHAR(50),
+    ZipCode VARCHAR(10),
+    Country VARCHAR(50),
+    LoyaltyProgramID INT
+);
+
+-- Dimension Table: DimProduct
+CREATE TABLE DimProduct (
+    ProductID INT PRIMARY KEY autoincrement start 1 increment 1,
+    ProductName VARCHAR(100),
+    Category VARCHAR(50),
+    Brand VARCHAR(50),
+    UnitPrice DECIMAL(10, 2)
+);
+
+-- Dimension Table: DimStore
+CREATE TABLE DimStore (
+    StoreID INT PRIMARY KEY autoincrement start 1 increment 1,
+    StoreName VARCHAR(100),
+    StoreType VARCHAR(50),
+	StoreOpeningDate DATE,
+    Address VARCHAR(255),
+    City VARCHAR(50),
+    State VARCHAR(50),
+    ZipCode VARCHAR(10),
+    Country VARCHAR(50),
+    ManagerName VARCHAR(100)
+);
+
+-- Dimension Table: DimLoyaltyProgram
+CREATE TABLE DimLoyaltyProgram (
+    LoyaltyProgramID INT PRIMARY KEY,
+    ProgramName VARCHAR(100),
+    ProgramTier VARCHAR(50),
+    PointsAccrued INT
+);
+
+TEST_DB
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+CREATE or replace file format CSV_SOURCE_FILE_FORMAT
+
+
+CREATE or replace Stage TESTSTAGE;
+
+
+-- TEST_DB.TEST_DB_SCHEMA.TESTSTAGE
+
+-- PUT 'file://C:/Users/julio/OneDrive/Documents/dataprojects2026/Excel/CSV Files/dimloyaltyinfoVer1_export.csv' @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/DimLoyaltyInfo/ AUTO_COMPRESS=FALSE;
+
+-- PUT 'file://C:/Users/julio/OneDrive/Documents/dataprojects2026/Excel/CSV Files/customerinfo.csv' @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/customerinfo/ AUTO_COMPRESS=FALSE;
+
+-- PUT 'file://C:/Users/julio/OneDrive/Documents/dataprojects2026/Excel/CSV Files/productinfo.csv' @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/productinfo/ AUTO_COMPRESS=FALSE;
+
+-- PUT 'file://C:/Users/julio/OneDrive/Documents/dataprojects2026/Excel/CSV Files/DIMDATE.csv' @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/DIMDATE/ AUTO_COMPRESS=FALSE;
+
+-- PUT 'file://C:/Users/julio/OneDrive/Documents/dataprojects2026/Excel/CSV Files/Storenamesfinal.csv' @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/Storenamesfinal/ AUTO_COMPRESS=FALSE;
+
+-- PUT 'file://C:/Users/julio/OneDrive/Documents/dataprojects2026/Excel/CSV Files/Dailysalesdata/*.csv' @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/Dailysalesdata/ AUTO_COMPRESS=FALSE;
+
+-- PUT 'file://C:/Users/julio/OneDrive/Documents/dataprojects2026/Excel/CSV Files/factorders.csv' @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/Dailysalesdata/ AUTO_COMPRESS=FALSE;
+
+-- Copying into official database
+
+
+
+COPY INTO 
+DIMLOYALTYPROGRAM
+FROM @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/DimLoyaltyInfo/
+FILE_FORMAT = (TYPE = 'CSV' FIELD_DELIMITER = ',' SKIP_HEADER = 1);
+
+select * from DIMLOYALTYPROGRAM
+
+
+DROP TABLE IF EXISTS DIMCUSTOMER;
+
+CREATE TABLE DIMCUSTOMER (
+    CUSTOMERID INT AUTOINCREMENT,
+    FIRSTNAME VARCHAR,
+    LASTNAME VARCHAR,
+    GENDER VARCHAR,
+    DATEOFBIRTH DATE,
+    EMAIL VARCHAR,
+    PHONENUMBER VARCHAR,
+    ADDRESS VARCHAR,
+    CITY VARCHAR,
+    STATE VARCHAR,
+    POSTALCODE VARCHAR,
+    COUNTRY VARCHAR,
+    LOYALTYPROGRAMID INT
+);
+
+COPY INTO DIMCUSTOMER (FIRSTNAME, LASTNAME, GENDER, DATEOFBIRTH, EMAIL, PHONENUMBER, ADDRESS, CITY, STATE, POSTALCODE, COUNTRY, LOYALTYPROGRAMID)
+FROM (
+  SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12
+  FROM @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/customerinfo/
+)
+FILE_FORMAT = (TYPE = 'CSV' FIELD_DELIMITER = ',' SKIP_HEADER = 1);
+
+
+SELECT * from  DIMCUSTOMER
+
+
+
+
+
+
+COPY INTO DIMPRODUCT (ProductName, Category, Brand, UnitPrice)
+FROM @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/productinfo/
+FILE_FORMAT = (TYPE = 'CSV' FIELD_DELIMITER = ',' SKIP_HEADER = 1);
+
+Select * from DIMPRODUCT
+
+
+COPY INTO DIMDATE (DateID, Date, DAYOFWEEK, month, quarter, year, IsWeekend)
+FROM @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/DIMDATE/
+FILE_FORMAT = (TYPE = 'CSV' FIELD_DELIMITER = ',' SKIP_HEADER = 1);
+
+SELECT * from DIMDATE
+
+
+COPY INTO DIMSTORE (
+    STORENAME, 
+    STORETYPE, 
+    STOREOPENINGDATE, 
+    ADDRESS, 
+    CITY, 
+    STATE,    -- Added this because it was in your CREATE TABLE but missing in your COPY
+    COUNTRY, 
+    REGION, 
+    MANAGERNAME
+)
+FROM (
+  SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9
+  FROM @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/Storenamesfinal/
+)
+FILE_FORMAT = (
+    TYPE = 'CSV' 
+    FIELD_DELIMITER = ';'      -- Changed from , to ;
+    SKIP_HEADER = 1
+    FIELD_OPTIONALLY_ENCLOSED_BY = '"'
+);
+
+SELECT * from DIMSTORE
+
+
+COPY INTO FACTORDERS(DateID,CustomerID,ProductID,StoreID,QuantityOrdered,OrderAmount,DiscountAmount,ShippingCost,TotalAmount)
+FROM @TEST_DB.TEST_DB_SCHEMA.TESTSTAGE/Dailysalesdata/
+FILE_FORMAT = (TYPE = 'CSV' FIELD_DELIMITER = ',' SKIP_HEADER = 1);
+
+SELECT * from FACTORDERS
+limit 100
+
+Create or REPLACE user Julio
+PASSWORD = '123'
+Login_name = 'Julio'
+DEFAULT_ROLE = 'AccountAdmin'
+DEFAULT_WAREHOUSE = 'COMPUTE_WH'
+MUST_CHANGE_PASSWORD = TRUE
+
+grant role accountadmin to user Julio;

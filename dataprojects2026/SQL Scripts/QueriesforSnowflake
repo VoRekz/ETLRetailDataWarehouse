@@ -1,0 +1,60 @@
+-- Query 1 Update the store table so that all stores have an opening date of 1/1/24 or later. 
+Update dimstore set STOREOPENINGDATE=DATEADD(DAY,UNIFORM(0,4200,RANDOM()), '2014-01-01')
+Commit;
+
+
+
+
+--Query 2 Update the stores table so that stores with #91-100 are opened in the last 12 months
+Update Dimstore set storeopeningdate= dateadd(day,uniform(0,360,random()),'2025-01-20')
+
+-- I messed up and applied these changes to all 100 stores, used Snowflake timetravel to fix
+-- 1. Rename the messed up table
+ALTER TABLE DIMSTORE RENAME TO DIMSTORE_MESSUP;
+
+-- 2. Clone the table from 5 minutes ago
+CREATE TABLE DIMSTORE CLONE DIMSTORE_MESSUP AT (OFFSET => -60*5);
+
+-- 3. Verify the dates are back to normal
+SELECT STORENAME, STOREOPENINGDATE FROM DIMSTORE;
+
+UPDATE DIMSTORE 
+SET STOREOPENINGDATE = DATEADD(day, UNIFORM(0, 360, RANDOM()), '2025-01-20')
+WHERE STOREID BETWEEN 91 AND 100;
+
+Commit;
+
+
+
+--Query 3 Update the customer table so that customers are at least 12 years old. so any customer under the age of 12 gets 12 more years of age. 
+
+Select * from Dimcustomer where dateofbirth >= dateadd(year,-12,current_date);
+
+Update dimcustomer set dateofbirth = dateadd(year,-12,dateofbirth) where dateofbirth >= dateadd(year,-12,current_date);
+Commit;
+
+
+
+--Query 4 Update dateid in orders table to have a date after the store was actually opened. 
+Select orderid,f.dateid,d.date,s.storeid,s.storeopeningdate from FACTORDERS F
+join DIMDATE D ON F.DATEID = D.DATEID
+Join DIMSTORE S on F.STOREID=S.STOREID
+Where D.date<s.storeopeningdate
+
+update factorders f
+set f.dateid =
+r.dateid from 
+(select orderid,d.dateid from
+(
+select orderid,
+DATEADD(day,
+datediff(day, s.storeopeningdate,current_date) * uniform(1,10,random())* .1,s.storeopeningdate) as new_date
+
+from factorders f
+join DIMDATE D ON F.DATEID = D.DATEID
+Join DIMSTORE S on F.STOREID=S.STOREID
+Where D.date<s.storeopeningdate) o
+join dimdate d on o.new_date=d.date)r
+where f.orderid=r.orderid
+
+COMMIT;
